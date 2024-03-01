@@ -57,7 +57,7 @@ def update_dns_records():
         # compare to the current IP address
         if record_ip != current_ip:
             # if different, update cloudflare
-            update_dns_record(current_ip, record["name"], zone_id, record["id"], dns_edit_key)
+            update_dns_record(current_ip, record["name"], zone_id, record["id"], dns_edit_key, record["modified_on"])
 
 def get_keys():
     # get the read key, edit key, and zone id
@@ -67,7 +67,7 @@ def get_keys():
 
     return (dns_read_key, dns_edit_key, zone_id)
 
-def update_dns_record(ip_address, domain_name, zone_id, dns_record_id, dns_edit_key):
+def update_dns_record(ip_address, domain_name, zone_id, dns_record_id, dns_edit_key, modified_on):
     # create an argument payload
     payload = "{\n  \"content\": \"" + ip_address + "\",\n  \"name\": \"" + domain_name + "\",\n  \"proxied\": true,\n  \"type\": \"A\",\n  \"comment\": \"Domain verification record\",\n  \"ttl\": 60\n}"
 
@@ -86,7 +86,7 @@ def update_dns_record(ip_address, domain_name, zone_id, dns_record_id, dns_edit_
 
     # send out email
     send_email(
-        "Successfully Updated DNS Record For " + domain_name,
+        "Successfully Updated DNS Record For " + domain_name + " at " + modified_on,
         data.decode("utf-8").replace(",", "\n"),
         server_email,
         admin_email
@@ -105,8 +105,12 @@ def send_email(subject, body, email_from, email_to):
     server.starttls()
     server.login(server_email, server_email_key)
 
+    # recipients needs to be a list of strings according to
+    # https://stackoverflow.com/questions/8856117/how-to-send-email-to-multiple-recipients-using-python-smtplib
+    recipients = email_to.split(",")
+
     # send the email
-    server.sendmail(email_from, email_to, message.as_string())
+    server.sendmail(email_from, recipients, message.as_string())
 
     # slose the SMTP connection
     server.quit()
